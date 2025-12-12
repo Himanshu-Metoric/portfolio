@@ -132,30 +132,59 @@ if (contactForm) {
 }
 
 /* ------------------------------
-   Sessionize speaker integration
-   Fetches: https://sessionize.com/api/speaker/json/wmcraxy4nq
-   Renders speaker, sessions, and links client-side.
+   Sessionize speaker integration with Vercel proxy fallback
+   Tries direct fetch first, then /api/sessionize if direct fails (CORS).
    ------------------------------ */
 
+async function tryFetchJson(url, opts = {}) {
+  try {
+    const res = await fetch(url, opts);
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    const text = await res.text();
+    try { return JSON.parse(text); } catch (e) { return text; }
+  } catch (err) {
+    throw err;
+  }
+}
+
 async function loadSessionizeSpeaker() {
-  const apiUrl = 'https://sessionize.com/api/speaker/json/wmcraxy4nq';
+  const directApi = 'https://sessionize.com/api/speaker/json/wmcraxy4nq';
+  const vercelProxy = '/api/sessionize';
+
   const loadingEl = document.getElementById('speaker-loading');
   const cardEl = document.getElementById('speaker-card');
 
-  try {
-    const res = await fetch(apiUrl);
-    if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`);
-    const data = await res.json();
+  function showError(msg) {
+    console.error(msg);
+    if (loadingEl) loadingEl.textContent = 'Unable to load speaker.';
+  }
 
-    // Sessionize sometimes returns an array or an object - handle both.
+  try {
+    let data;
+    // 1) Try direct fetch first
+    try {
+      data = await tryFetchJson(directApi);
+      console.info('Sessionize: loaded via direct fetch');
+    } catch (errDirect) {
+      console.warn('Direct fetch failed (likely CORS). Trying Vercel proxy...', errDirect);
+      // 2) Try Vercel function
+      try {
+        data = await tryFetchJson(vercelProxy);
+        console.info('Sessionize: loaded via Vercel proxy');
+      } catch (errVercel) {
+        console.warn('Vercel proxy failed.', errVercel);
+        throw errVercel; // bubble up
+      }
+    }
+
+    // normalize returned payload (Sessionize usually returns array or object)
     const speaker = Array.isArray(data) ? data[0] : data;
     if (!speaker) throw new Error('No speaker data returned');
 
-    // Resolve common field names used by Sessionize JSONs
+    // --- same rendering code as before (keeps defensive parsing) ---
     const name = speaker.name || `${speaker.firstName || ''} ${speaker.lastName || ''}`.trim() || speaker.fullName || 'Speaker';
     const title = speaker.title || speaker.company || speaker.tagLine || '';
     const bio = speaker.bio || speaker.biography || speaker.description || speaker.content || '';
-    // photo can be at speaker.photo, speaker.profilePicture, speaker.image, speaker.photoUrl
     const photo =
       speaker.photo ||
       speaker.profilePicture ||
@@ -167,7 +196,6 @@ async function loadSessionizeSpeaker() {
     const links = speaker.links || speaker.socials || speaker.contact || [];
     const sessions = speaker.sessions || speaker.talks || [];
 
-    // Inject into DOM
     if (photo) {
       const img = document.getElementById('speaker-photo');
       img.src = photo;
@@ -194,7 +222,6 @@ async function loadSessionizeSpeaker() {
       const ul = document.createElement('ul');
       ul.className = 'speaker-sessions-list';
       sessions.forEach(s => {
-        // s may be string or object — try common fields
         let sessionTitle = '';
         let sessionDesc = '';
         if (typeof s === 'string') sessionTitle = s;
@@ -217,12 +244,11 @@ async function loadSessionizeSpeaker() {
       sessionsContainer.appendChild(ul);
     }
 
-    // Build links (robust handling for different shapes)
+    // Links
     const linksContainer = document.getElementById('speaker-links');
     linksContainer.innerHTML = '';
     const normalizedLinks = Array.isArray(links) ? links : Object.values(links || {});
     normalizedLinks.forEach(l => {
-      // l may be string (URL) or object {title, href, url, rel}
       let href = '';
       let label = '';
       if (typeof l === 'string') {
@@ -243,12 +269,10 @@ async function loadSessionizeSpeaker() {
       }
     });
 
-    // Show card, hide loading
     if (loadingEl) loadingEl.hidden = true;
     if (cardEl) cardEl.hidden = false;
   } catch (err) {
-    console.error('Error loading Sessionize speaker:', err);
-    if (loadingEl) loadingEl.textContent = 'Unable to load speaker.';
+    showError(err);
   }
 }
 
