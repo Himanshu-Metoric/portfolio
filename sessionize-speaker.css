@@ -1,0 +1,21 @@
+/* Speaker card styles */
+.speaker-section { padding: 2.5rem 0; }
+.speaker-card { display: flex; gap: 1rem; align-items: flex-start; border-radius: 10px; padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.03); }
+.speaker-photo { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; }
+.speaker-info { flex: 1; }
+.speaker-name { font-size: 1.25rem; margin: 0 0 .25rem 0; }
+.speaker-title { margin: 0 0 .5rem 0; color: #9aa; font-size: .95rem; }
+.speaker-bio { margin-top: .5rem; color: #dfe7f2; line-height: 1.5; }
+.speaker-sessions { margin-top: .75rem; color: #dfe7f2; }
+.speaker-sessions-title { margin: 0 0 .5rem 0; font-size: 1rem; }
+.speaker-sessions-list { list-style: disc; margin-left: 1.1rem; }
+.speaker-session-item { margin-bottom: .5rem; }
+.speaker-links { margin-top: .75rem; display:flex; gap:.5rem; flex-wrap:wrap; }
+.speaker-link { padding: .25rem .5rem; border-radius:4px; background: rgba(255,255,255,0.03); color: inherit; text-decoration:none; font-size:.9rem; }
+.speaker-loading { color: #9aa; text-align: center; }
+
+@media (max-width: 600px) {
+  .speaker-card { flex-direction: column; align-items: center; text-align: center; }
+  .speaker-photo { width: 100px; height: 100px; }
+  .speaker-info { width: 100%; }
+}
